@@ -1,0 +1,41 @@
+diff --git a/node_modules/docx-merger/dist/merge-bullets-numberings.js b/node_modules/docx-merger/dist/merge-bullets-numberings.js
+index e381247..e9521c2 100644
+--- a/node_modules/docx-merger/dist/merge-bullets-numberings.js
++++ b/node_modules/docx-merger/dist/merge-bullets-numberings.js
+@@ -56,6 +56,7 @@ var prepareNumbering = function (files) {
+                         absrefID[i].setAttribute('w:val', iId + index);
+                     }
+                 }
++                updateStyleRel_Content(zip, index, ID);
+             }
+         }
+ 
+@@ -107,6 +108,13 @@ var generateNumbering = function (zip, _numbering) {
+     zip.file("word/numbering.xml", xml);
+ };
+ 
++var updateStyleRel_Content = function (zip, fileIndex, styleId) {
++    var xmlString = zip.file("word/document.xml").asText();
++    var xml = new DOMParser().parseFromString(xmlString, 'text/xml');
++    xmlString = xmlString.replace(new RegExp('(?<=w:numId )w:val="' + styleId + '"', 'g'), 'w:val="' + styleId + fileIndex + '"');
++    zip.file("word/document.xml", xmlString);
++};
++
+ module.exports = {
+     prepareNumbering: prepareNumbering,
+     mergeNumbering: mergeNumbering,
+diff --git a/node_modules/docx-merger/dist/merge-styles.js b/node_modules/docx-merger/dist/merge-styles.js
+index 00a6eae..60d8c7e 100644
+--- a/node_modules/docx-merger/dist/merge-styles.js
++++ b/node_modules/docx-merger/dist/merge-styles.js
+@@ -68,7 +68,9 @@ var updateStyleRel_Content = function (zip, fileIndex, styleId) {
+     var xmlString = zip.file("word/document.xml").asText();
+     var xml = new DOMParser().parseFromString(xmlString, 'text/xml');
+ 
+-    xmlString = xmlString.replace(new RegExp('w:val="' + styleId + '"', 'g'), 'w:val="' + styleId + '_' + fileIndex + '"');
++    // xmlString = xmlString.replace(new RegExp('w:val="' + styleId + '"', 'g'), 'w:val="' + styleId + '_' + fileIndex + '"');
++    // 此处仅针对非numId属性重命名，numId在处理numbering.xml时单独处理
++    xmlString = xmlString.replace(new RegExp('(?<!w:numId )w:val="' + styleId + '"', 'g'), 'w:val="' + styleId + '_' + fileIndex + '"');
+ 
+     // zip.file("word/document.xml", "");
+ 
