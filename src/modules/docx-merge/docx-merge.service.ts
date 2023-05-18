@@ -10,7 +10,8 @@ export class DocxMergeService {
     return 'This action adds a new docxMerge';
   }
 
-  findAll() {
+  async findAll() {
+    await merger();
     return `This action returns all docxMerge`;
   }
 

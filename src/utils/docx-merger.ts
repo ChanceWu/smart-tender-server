@@ -4,6 +4,7 @@ import {
   AlignmentType,
   Document,
   HeadingLevel,
+  ImageRun,
   Packer,
   Paragraph,
   TabStopPosition,
@@ -24,6 +25,31 @@ function createPage(text: string) {
           new Paragraph({
             text: text,
             heading: HeadingLevel.HEADING_1,
+          }),
+        ],
+      },
+    ],
+  });
+  return Packer.toBuffer(doc);
+}
+
+async function createImagePage(url) {
+  const buf = await fetchFile(url);
+  const doc = new Document({
+    sections: [
+      {
+        properties: {},
+        children: [
+          new Paragraph({
+            children: [
+              new ImageRun({
+                data: buf,
+                transformation: {
+                  width: 200,
+                  height: 200,
+                },
+              }),
+            ],
           }),
         ],
       },
@@ -66,6 +92,8 @@ export const merger = async () => {
   //   path.resolve(__dirname, 'docx/d6.docx'),
   //   'binary',
   // );
+  const img1 = await createImagePage('docx/001.jpg');
+  const img2 = await createImagePage('docx/002.jpg');
   const docx = new DocxMerger({ pageBreak: false }, [
     head1,
     file1,
@@ -75,6 +103,8 @@ export const merger = async () => {
     // file3,
     // head4,
     // file4,
+    img1,
+    img2,
   ]);
 
   //SAVING THE DOCX FILE
