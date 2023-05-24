@@ -34,7 +34,7 @@ function createPage(text: string) {
 }
 
 async function createImagePage(url) {
-  const buf = await fetchFile(url);
+  const buf = await fetchNewFile(url);
   const doc = new Document({
     sections: [
       {
@@ -69,7 +69,35 @@ function fetchFile(url) {
   // return fetch(`http://localhost:3003/download?file=${url}`);
 }
 
-export const merger = async () => {
+function fetchNewFile(key: string) {
+  return axios({
+    url: `http://10.10.168.177:8080/inter-api/tender/file/download/${key}`,
+    method: 'GET',
+    responseType: 'arraybuffer',
+    headers: {
+      Authorization: 'Bearer ' + 'ee86c8af-29f0-488e-ab63-23467891d4f2'
+    }
+  }).then((response) => {
+    return Buffer.from(response.data, 'binary');
+  });
+  // return fetch(`http://localhost:3003/download?file=${url}`);
+}
+
+export const merger = async (data: API.DirListItem[]) => {
+  console.log(data)
+  const reqList = data.map(v => {
+    if (v.isMaterial) {
+      if (['.jpg', '.jpeg', '.png'].includes(v.fileDetailRespList[0].postfix)) {
+        return createImagePage(v.fileDetailRespList[0].key)
+      } else {
+        return fetchNewFile(v.fileDetailRespList[0].key)
+      }
+    } else {
+      return createPage(v.name);
+    }
+  })
+  try {
+  const result = await Promise.all(reqList)
   const head1 = await createPage('概述');
   const file1 = await fetchFile('docx/d1.docx');
   // const file1 = fs.readFileSync(
@@ -94,18 +122,20 @@ export const merger = async () => {
   // );
   const img1 = await createImagePage('docx/001.jpg');
   const img2 = await createImagePage('docx/002.jpg');
-  const docx = new DocxMerger({ pageBreak: false }, [
-    head1,
-    file1,
-    head2,
-    file2,
-    // head3,
-    // file3,
-    // head4,
-    // file4,
-    img1,
-    img2,
-  ]);
+  const docx = new DocxMerger({ pageBreak: false }, result,
+  //   [
+  //   head1,
+  //   file1,
+  //   head2,
+  //   file2,
+  //   // head3,
+  //   // file3,
+  //   // head4,
+  //   // file4,
+  //   img1,
+  //   img2,
+  // ]
+  );
 
   //SAVING THE DOCX FILE
   // TODO: 处理模板文件合并时，部分无序列表样式失效问题
@@ -119,4 +149,7 @@ export const merger = async () => {
       if (err) throw new Error(JSON.stringify(err));
     });
   });
+} catch (err) {
+  console.error(err)
+}
 };
