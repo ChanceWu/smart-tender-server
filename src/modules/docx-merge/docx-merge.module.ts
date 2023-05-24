@@ -4,6 +4,6 @@ import { DocxMergeController } from './docx-merge.controller';
 
 @Module({
   controllers: [DocxMergeController],
-  providers: [DocxMergeService]
+  providers: [DocxMergeService],
 })
 export class DocxMergeModule {}
