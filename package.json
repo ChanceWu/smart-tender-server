@@ -30,6 +30,7 @@
     "axios": "^1.4.0",
     "docx": "^8.0.4",
     "docx-merger": "^1.2.2",
+    "dotenv": "^16.0.3",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^7.2.0"
