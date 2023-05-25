@@ -15,33 +15,45 @@ import {
 } from 'docx';
 import { writeFile } from 'fs';
 import { resolve } from 'path';
+import * as FormData from 'form-data';
 import axios from 'axios';
+import { Readable } from 'stream';
+import fetch from 'node-fetch';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const DocxMerger = require('docx-merger');
-const BACKEND_SERVER = process.env.BACKEND_SERVER;
 @Injectable()
 export class DocxMergeService {
   private readonly logger = new Logger('DocxMergeService');
 
-  private token: string;
-  async create(data: API.TenderTocType[], id: number, token: string) {
-    this.handleCreateTender(data, id, token)
-    return { msg: '标书生成中', code: 200 };
+  private loginUser: API.LoginUser;
+  create(data: CreateDocxMergeDto) {
+    this.handleCreateTender(data)
+    return { msg: '标书生成中' };
   }
 
-  async handleCreateTender(data: API.TenderTocType[], id: number, token: string) {
+  async handleCreateTender(data: CreateDocxMergeDto) {
     try {
-      const treeData = formatTreeData(data);
-      this.token = token;
-      const list = getListFromTree(treeData, 1);
+      const treeData = formatTreeData(data.tenderToc);
+      this.loginUser = {
+        Authorization: data.loginUser.token,
+        userName: encodeURI(data.loginUser.userName),
+        staffCode: encodeURI(data.loginUser.staffCode),
+        staffName: encodeURI(data.loginUser.staffName),
+        companyCode: encodeURI(data.loginUser.companyCode),
+        companyName: encodeURI(data.loginUser.companyName),
+        userId: encodeURI(data.loginUser.userId),
+      };
+      console.log(JSON.stringify(treeData))
+      const list = getListFromTree(treeData, data.tenderCreateSourceDtoMap, 1);
+      console.log(JSON.stringify(list))
       const source = await this.getSourceByData(list);
       const blobData = await this.mergerDocx(source);
-      const tenderKey = await this.uploadDocx(blobData);
-      this.createCallBack({ fileKey: tenderKey, id, status: 'SUCCESS' });
+      const tenderKey = await this.uploadDocx(blobData, data.name);
+      this.createCallBack({ fileKey: tenderKey, id: data.id, status: 'SUCCESS' });
     } catch (err) {
-      this.createCallBack({ id, status: 'FAIL' });
-      // this.logger.error(`create tender get err: ${err.message}`, err.stack);
-      throw new HttpException({ msg: '标书生成失败', details: `create tender get err: ${err.message}, ${err.stack}` }, HttpStatus.INTERNAL_SERVER_ERROR);
+      this.createCallBack({ id: data.id, status: 'FAIL' });
+      this.logger.error(`create tender get err: ${err.message}`, err.stack);
+      throw new Error(err);
     }
   }
 
@@ -73,6 +85,7 @@ export class DocxMergeService {
 
   async createImagePage(url) {
     const buf = await this.fetchNewFile(url);
+    console.log('image ',buf)
     try {
       const doc = new Document({
         sections: [
@@ -101,31 +114,31 @@ export class DocxMergeService {
     }
   }
 
-  fetchNewFile(key: string) {
-    console.log('token ', this.token)
-    return axios({
-      url: `${BACKEND_SERVER}/inter-api/tender/file/download/${key}`,
-      method: 'GET',
-      responseType: 'arraybuffer',
-      headers: {
-        Authorization: this.token,
-      }
-    }).then((response) => {
+  async fetchNewFile(key: string) {
+    try {
+      const response = await axios({
+        url: `${process.env.BACKEND_SERVER}/inter-api/tender/file/download/${key}`,
+        method: 'GET',
+        responseType: 'arraybuffer',
+        headers: {
+          ...this.loginUser,
+        }
+      });
       return Buffer.from(response.data, 'binary');
-    }).catch((err) => {
+    } catch (err) {
       this.logger.error(`axios ${key} get err: ${err.message}`, err.stack);
       throw new Error(err);
-    });
+    }
+
   }
 
   async getSourceByData(data: API.TenderTocTreeNode[]) {
-    console.log(data)
     const reqList = data.map(v => {
-      if (v.tocFlag && v.tenderSourceDto) {
-        if (['.jpg', '.jpeg', '.png'].includes(v.tenderSourceDto.fileDetailRespList[0].postfix)) {
-          return this.createImagePage(v.tenderSourceDto.fileDetailRespList[0].key)
+      if (v.sourceFlag && v.tenderSourceDto) {
+        if (['.jpg', '.jpeg', '.png'].includes(v.tenderSourceDto.fileDtoList[0].postfix)) {
+          return this.createImagePage(v.tenderSourceDto.fileDtoList[0].key)
         } else {
-          return this.fetchNewFile(v.tenderSourceDto.fileDetailRespList[0].key)
+          return this.fetchNewFile(v.tenderSourceDto.fileDtoList[0].key)
         }
       } else {
         return this.createPage(v.tocName);
@@ -143,9 +156,9 @@ export class DocxMergeService {
     try {
       const docx = new DocxMerger({ pageBreak: false }, bufList);
 
-      return new Promise<Blob>((resolve, reject) => {
-        docx.save('blob', (data) => {
-          console.log(writeFile, data);
+      return new Promise<Buffer>((resolve, reject) => {
+        docx.save('nodebuffer', (data) => {
+          console.log(writeFile, data, Buffer.isBuffer(data));
           return resolve(data);
 
           // fs.writeFile("output.zip", data, function(err){/*...*/});
@@ -162,21 +175,24 @@ export class DocxMergeService {
     }
   };
 
-  async uploadDocx(data: Blob) {
+  async uploadDocx(data: Buffer, name = 'tender') {
     const formData = new FormData();
-    formData.append('file', data);
+    formData.append('file', data, { filename: name+'.docx' });
+    console.log('formData', formData.getHeaders())
     try {
       const { data } = await axios<API.UploadResult>({
-        url: `${BACKEND_SERVER}/inter-api/tender/file/upload`,
+        url: `${process.env.BACKEND_SERVER}/inter-api/tender/file/upload`,
         method: 'POST',
         data: formData,
         headers: {
-          Authorization: this.token,
+          ...this.loginUser,
+          ...formData.getHeaders()
         }
       })
       if (data.code === 1) {
         return data.data.key;
       } else {
+        this.logger.error(`uploadDocx get err: ${data.msg || '上传标书出错'}`);
         throw new Error(data.msg || '上传标书出错');
       }
     } catch (err) {
@@ -186,13 +202,14 @@ export class DocxMergeService {
   }
 
   async createCallBack(data: API.CreateCallback) {
+    this.logger.warn(`createCallBack data: `, data);
     try {
-      axios<API.UploadResult>({
-        url: `${BACKEND_SERVER}/inter-api/tender/tender/create/notice`,
+      await axios<API.UploadResult>({
+        url: `${process.env.BACKEND_SERVER}/inter-api/tender/tender/create/notice`,
         method: 'POST',
         data,
         headers: {
-          Authorization: this.token,
+          ...this.loginUser,
         }
       })
     } catch (err) {

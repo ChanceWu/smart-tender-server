@@ -87,10 +87,10 @@ export const merger = async (data: API.DirListItem[]) => {
   console.log(data)
   const reqList = data.map(v => {
     if (v.isMaterial) {
-      if (['.jpg', '.jpeg', '.png'].includes(v.fileDetailRespList[0].postfix)) {
-        return createImagePage(v.fileDetailRespList[0].key)
+      if (['.jpg', '.jpeg', '.png'].includes(v.fileDtoList[0]?.postfix)) {
+        return createImagePage(v.fileDtoList[0].key)
       } else {
-        return fetchNewFile(v.fileDetailRespList[0].key)
+        return fetchNewFile(v.fileDtoList[0].key)
       }
     } else {
       return createPage(v.name);

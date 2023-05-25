@@ -1,5 +1,6 @@
 export const getListFromTree = (
   nodes: API.TenderTocTreeNode[],
+  map: Record<string, API.TenderSourceDto>,
   level: number,
 ): API.TenderTocItem[] => {
   const list: API.TenderTocItem[] = [];
@@ -11,14 +12,14 @@ export const getListFromTree = (
       level: level,
     };
 
-    if (node.tenderSourceDto?.fileDetailRespList) {
-      const { fileDetailRespList, ...restTenderSourceDto } = node.tenderSourceDto;
-      fileDetailRespList.forEach(v => {
+    if (node.tenderSourceId && map[String(node.tenderSourceId)] && map[String(node.tenderSourceId)]?.fileDtoList) {
+      const { fileDtoList, ...restTenderSourceDto } = map[String(node.tenderSourceId)];
+      fileDtoList.forEach(v => {
         list.push({
           ...item,
           tenderSourceDto: {
             ...restTenderSourceDto,
-            fileDetailRespList: [v]
+            fileDtoList: [v]
           },
         })
       })
@@ -28,7 +29,7 @@ export const getListFromTree = (
 
 
     if (node.children.length > 0) {
-      const childrenList = getListFromTree(node.children, level + 1);
+      const childrenList = getListFromTree(node.children, map, level + 1);
       list.push(...childrenList);
     }
   });

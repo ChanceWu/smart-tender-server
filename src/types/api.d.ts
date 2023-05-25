@@ -5,7 +5,7 @@ declare namespace API {
         parentId: number;
         isMaterial: boolean; // true：素材  false：目录
         file?: string[]; // 素材下载地址
-        fileDetailRespList?: {
+        fileDtoList?: {
             fileUrl: string;
             id: number;
             key: string;
@@ -21,7 +21,7 @@ declare namespace API {
         parentId: number;
         isMaterial: boolean; // true：素材  false：目录
         file?: string[]; // 素材下载地址
-        fileDetailRespList?: {
+        fileDtoList?: {
             fileUrl: string;
             id: number;
             key: string;
@@ -31,7 +31,7 @@ declare namespace API {
         level: number;
     }
 
-    type FileDetailRespList = {
+    type FileDtoList = {
         /** 文件地址 */
         fileUrl?: string;
         /** 主键id */
@@ -45,46 +45,36 @@ declare namespace API {
     };
 
     type TenderSourceDto = {
-        /** 分类id */
-        categoryId?: number;
-        /** 分类名称 */
-        categoryName?: string;
-        /** 文件详情对象 */
-        fileDetailRespList?: FileDetailRespList[];
         /** 主键id */
         id?: number;
-        /** 修改人 */
-        modifier?: string;
-        /** 修改人id */
-        modifierId?: number;
-        /** 修改人名称 */
-        modifierName?: string;
-        /** 修改时间 */
-        modifyTime?: string;
         /** 分类名称 */
         name?: string;
+        /** 分类id */
+        categoryId?: number;
+        /** 文件详情对象 */
+        fileDtoList?: FileDtoList[];
         /** 文件类型 WORD:文档 PIC：图片 */
         typeCode?: string;
-        /** 文件类型 WORD:文档 PIC：图片 */
-        typeName?: string;
     };
 
     export interface TenderTocNode {
         tocName?: string;
-        tocFlag?: boolean;
-        tenderSourceDto?: TenderSourceDto;
+        sourceFlag?: boolean;
+        tenderSourceId?: number;
     }
 
     export interface TenderTocItem {
         tocName?: string;
-        tocFlag?: boolean;
+        sourceFlag?: boolean;
+        tenderSourceId?: number;
         tenderSourceDto?: TenderSourceDto;
         level?: number;
     }
 
     export interface TenderTocTreeNode {
         tocName?: string;
-        tocFlag?: boolean;
+        sourceFlag?: boolean;
+        tenderSourceId?: number;
         tenderSourceDto?: TenderSourceDto;
         level?: number;
         children?: TenderDirTreeNode[];
@@ -93,6 +83,17 @@ declare namespace API {
     type TenderTocType = {
         children?: TenderTocType[];
         t?: TenderTocNode;
+    }
+
+    type LoginUser = {
+        userId: string;
+        userName: string;
+        staffCode: string;
+        staffName: string
+        companyCode: string;
+        companyName: string;
+        token?: string;
+        Authorization?: string;
     }
 
     interface UploadResult {
