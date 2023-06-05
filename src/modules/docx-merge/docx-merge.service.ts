@@ -3,6 +3,7 @@ import { CreateDocxMergeDto } from './dto/create-docx-merge.dto';
 import { UpdateDocxMergeDto } from './dto/update-docx-merge.dto';
 import {
   formatTreeData,
+  getDefaultHeaderStyle,
   getHeaderStyleFromList,
   getListFromTree,
 } from 'src/utils';
@@ -22,7 +23,7 @@ import {
   TabStopType,
   TextRun,
 } from 'docx';
-import { writeFile } from 'fs';
+import { writeFile, readFileSync } from 'fs';
 import { resolve } from 'path';
 import * as FormData from 'form-data';
 import axios from 'axios';
@@ -63,6 +64,7 @@ export class DocxMergeService {
       const treeData = formatTreeData(data.tenderToc);
       this.loginUser = {
         Authorization: data.loginUser.token,
+        // supToken: data.loginUser.token,
         userName: encodeURI(data.loginUser.userName),
         staffCode: encodeURI(data.loginUser.staffCode),
         staffName: encodeURI(data.loginUser.staffName),
@@ -92,19 +94,31 @@ export class DocxMergeService {
     return `This action returns all docxMerge ${process.env.BACKEND_SERVER}`;
   }
 
-  async createTableOfContents() {
-    const buf = await this.fetchNewFile(
-      `http://localhost:3003/download?file=docx/001.jpg`,
-    );
+  async createTableOfContents(preStyle: API.PreStyle) {
+    const { margin = {}, header = [] } = preStyle ?? {};
+    const headerStyle = getHeaderStyleFromList(header);
+    // const HeaderLevel = HeaderArr[level ?? 0];
+    // const style = headerStyle['Heading1'] || DefaultStyle;
     try {
       const doc = new Document({
         features: {
           updateFields: true,
         },
+        styles: {
+          default: {
+            ...(getDefaultHeaderStyle(headerStyle) || {})
+          },
+        },
         sections: [
           {
             properties: {
               page: {
+                margin: {
+                  top: `${margin.top ?? 2.54}cm`,
+                  right: `${margin.right ?? 3.18}cm`,
+                  bottom: `${margin.bottom ?? 2.54}cm`,
+                  left: `${margin.left ?? 3.18}cm`,
+                },
                 pageNumbers: {
                   start: 1,
                   formatType: NumberFormat.DECIMAL,
@@ -115,20 +129,15 @@ export class DocxMergeService {
               default: new Header({
                 children: [
                   new Paragraph({
+                    alignment: AlignmentType.RIGHT,
                     children: [
                       new ImageRun({
-                        data: buf,
+                        data: readFileSync(resolve(__dirname, '../../../public/images/logo.jpeg')),
                         transformation: {
-                          width: 100,
-                          height: 30,
+                          width: 157,
+                          height: 17,
                         },
-                      }),
-                      new TextRun('Foo Bar corp. '),
-                      new TextRun({
-                        children: ['Page Number ', PageNumber.CURRENT],
-                      }),
-                      new TextRun({
-                        children: [' to ', PageNumber.TOTAL_PAGES],
+
                       }),
                     ],
                   }),
@@ -141,12 +150,8 @@ export class DocxMergeService {
                   new Paragraph({
                     alignment: AlignmentType.CENTER,
                     children: [
-                      new TextRun('Foo Bar corp. '),
                       new TextRun({
-                        children: ['Page Number: ', PageNumber.CURRENT],
-                      }),
-                      new TextRun({
-                        children: [' to ', PageNumber.TOTAL_PAGES],
+                        children: [PageNumber.CURRENT],
                       }),
                     ],
                   }),
@@ -154,9 +159,10 @@ export class DocxMergeService {
               }),
             },
             children: [
-              new TableOfContents('Summary', {
-                hyperlink: true,
-                headingStyleRange: '1-5',
+              new Paragraph({
+                children: [
+                  new TextRun(''),
+                ],
               }),
             ],
           },
@@ -176,30 +182,20 @@ export class DocxMergeService {
     const style = headerStyle[HeaderLevel] || DefaultStyle;
     try {
       const doc = new Document({
-        styles: {
-          default: {
-            [HeaderLevel.toLowerCase()]: {
-              run: {
-                font: style.fontFamily ?? 'Calibri',
-                size: style.fontSize ?? 52,
-                bold: true,
-                color: '000000',
-              },
-            },
-          },
-        },
+        // styles: {
+        //   default: {
+        //     [HeaderLevel.toLowerCase()]: {
+        //       run: {
+        //         font: style.fontFamily ?? 'Calibri',
+        //         size: style.fontSize ?? 52,
+        //         bold: true,
+        //         color: '000000',
+        //       },
+        //     },
+        //   },
+        // },
         sections: [
           {
-            properties: {
-              page: {
-                margin: preStyle.margin ?? {
-                  top: 50,
-                  right: 30,
-                  bottom: 20,
-                  left: 10,
-                },
-              },
-            },
             children: [
               new Paragraph({
                 text: text,
@@ -254,17 +250,7 @@ export class DocxMergeService {
   }
 
   async fetchNewFile(key: string) {
-    let url = `http://localhost:3003/download?file=docx/d3.docx`;
-    if (key === `http://localhost:3003/download?file=docx/001.jpg`)
-      url = `http://localhost:3003/download?file=docx/001.jpg`;
     try {
-      return axios({
-        url: url,
-        method: 'GET',
-        responseType: 'arraybuffer',
-      }).then((response) => {
-        return Buffer.from(response.data, 'binary');
-      });
       const response = await axios({
         url: `${process.env.BACKEND_SERVER}/inter-api/tender/file/download/${key}`,
         method: 'GET',
@@ -297,7 +283,7 @@ export class DocxMergeService {
       }
     });
     try {
-      return Promise.all([this.createTableOfContents(), ...reqList]);
+      return Promise.all([this.createTableOfContents(preStyle), ...reqList]);
     } catch (err) {
       this.logger.error(`getSourceByData get err: ${err.message}`, err.stack);
       throw new Error(err);
@@ -309,16 +295,16 @@ export class DocxMergeService {
       const docx = new DocxMerger({ pageBreak: false }, bufList);
 
       // return new Promise<Buffer>((resolve, reject) => {
-      docx.save('nodebuffer', (data) => {
-        console.log(writeFile, data, Buffer.isBuffer(data));
-        // return resolve(data);
+        docx.save('nodebuffer', (data) => {
+          console.log(writeFile, data, Buffer.isBuffer(data));
+          // return resolve(data);
 
-        // fs.writeFile("output.zip", data, function(err){/*...*/});
-        writeFile(resolve(__dirname, 'output.docx'), data, function (err) {
-          /*...*/
-          if (err) throw new Error(JSON.stringify(err));
+          // fs.writeFile("output.zip", data, function(err){/*...*/});
+          writeFile(resolve(__dirname, 'output.docx'), data, function (err) {
+            /*...*/
+            if (err) throw new Error(JSON.stringify(err));
+          });
         });
-      });
       // });
     } catch (err) {
       this.logger.error(`mergerDocx get err: ${err.message}`, err.stack);

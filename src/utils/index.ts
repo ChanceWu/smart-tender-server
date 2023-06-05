@@ -1,3 +1,5 @@
+import { AlignmentType, IBaseParagraphStyleOptions } from "docx";
+
 export const getListFromTree = (
   nodes: API.TenderTocTreeNode[],
   map: Record<string, API.TenderSourceDto>,
@@ -59,3 +61,27 @@ export const getHeaderStyleFromList = (styles?: API.HeaderStyle[]) => {
   });
   return obj;
 };
+
+
+export const getDefaultHeaderStyle = (headerStyle: Record<string, API.HeaderStyle>) => {
+  const obj: Record<string, IBaseParagraphStyleOptions> = {};
+  ['Heading1', 'Heading2', 'Heading3', 'Heading4', 'Heading5', 'Heading6'].forEach(v => {
+    obj[v.toLowerCase()] = {
+      run: {
+        font: headerStyle[v]?.fontFamily ?? 'Calibri',
+        size: headerStyle[v]?.fontSize ?? 52,
+        bold: true,
+        color: '000000',
+      },
+      paragraph: {
+        alignment: (headerStyle[v]?.alignment ??
+          AlignmentType.RIGHT) as AlignmentType,
+        spacing: {
+          line: headerStyle[v]?.lineHeight ?? 720,
+        }
+      }
+    }
+  })
+  console.log('getDefaultHeaderStyle ', JSON.stringify(obj))
+  return obj
+}

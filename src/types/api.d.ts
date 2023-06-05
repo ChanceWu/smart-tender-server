@@ -94,6 +94,7 @@ declare namespace API {
     companyName: string;
     token?: string;
     Authorization?: string;
+    supToken?: string;
   };
 
   interface UploadResult {
@@ -118,20 +119,20 @@ declare namespace API {
   }
 
   interface PreStyle {
-    margin: MarginStyle;
-    header: HeaderStyle[];
+    margin?: MarginStyle;
+    header?: HeaderStyle[];
   }
   interface MarginStyle {
-    left: number;
-    right: number;
-    top: number;
-    bottom: number;
+    left?: number;
+    right?: number;
+    top?: number;
+    bottom?: number;
   }
   interface HeaderStyle {
-    level: string;
-    fontFamily: string;
-    fontSize: number;
-    lineHeight: number;
-    alignment: string;
+    level?: string;
+    fontFamily?: string;
+    fontSize?: number;
+    lineHeight?: number;
+    alignment?: string;
   }
 }
