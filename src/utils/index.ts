@@ -12,21 +12,25 @@ export const getListFromTree = (
       level: level,
     };
 
-    if (node.tenderSourceId && map[String(node.tenderSourceId)] && map[String(node.tenderSourceId)]?.fileDtoList) {
-      const { fileDtoList, ...restTenderSourceDto } = map[String(node.tenderSourceId)];
-      fileDtoList.forEach(v => {
+    if (
+      node.tenderSourceId &&
+      map[String(node.tenderSourceId)] &&
+      map[String(node.tenderSourceId)]?.fileDtoList
+    ) {
+      const { fileDtoList, ...restTenderSourceDto } =
+        map[String(node.tenderSourceId)];
+      fileDtoList.forEach((v) => {
         list.push({
           ...item,
           tenderSourceDto: {
             ...restTenderSourceDto,
-            fileDtoList: [v]
+            fileDtoList: [v],
           },
-        })
-      })
+        });
+      });
     } else {
       list.push(item);
     }
-
 
     if (node.children.length > 0) {
       const childrenList = getListFromTree(node.children, map, level + 1);
@@ -37,11 +41,21 @@ export const getListFromTree = (
   return list;
 };
 
-export const formatTreeData = (data: API.TenderTocType[]): API.TenderTocTreeNode[] => {
+export const formatTreeData = (
+  data: API.TenderTocType[],
+): API.TenderTocTreeNode[] => {
   return data.map((v) => {
     return {
       ...v.t,
       children: v.children?.length ? formatTreeData(v.children) : [],
     };
   });
+};
+
+export const getHeaderStyleFromList = (styles?: API.HeaderStyle[]) => {
+  const obj: Record<string, API.HeaderStyle> = {};
+  (styles ?? []).forEach((v) => {
+    obj[v.level] = v;
+  });
+  return obj;
 };
