@@ -25,17 +25,34 @@ index e381247..e9521c2 100644
      prepareNumbering: prepareNumbering,
      mergeNumbering: mergeNumbering,
 diff --git a/node_modules/docx-merger/dist/merge-styles.js b/node_modules/docx-merger/dist/merge-styles.js
-index 00a6eae..60d8c7e 100644
+index 00a6eae..d709c27 100644
 --- a/node_modules/docx-merger/dist/merge-styles.js
 +++ b/node_modules/docx-merger/dist/merge-styles.js
-@@ -68,7 +68,9 @@ var updateStyleRel_Content = function (zip, fileIndex, styleId) {
+@@ -14,7 +14,15 @@ var prepareStyles = function (files, style) {
+         for (var node in nodes) {
+             if (/^\d+$/.test(node) && nodes[node].getAttribute) {
+                 var styleId = nodes[node].getAttribute('w:styleId');
+-                nodes[node].setAttribute('w:styleId', styleId + '_' + index);
++                if (!(index === 0 && styleId.includes('Heading'))) {
++                    nodes[node].setAttribute('w:styleId', styleId + '_' + index);
++                    var nameStyle = nodes[node].getElementsByTagName('w:name')[0];
++                    if (nameStyle) {
++                        var nameStyleId = nameStyle.getAttribute('w:val');
++                        nameStyle.setAttribute('w:val', nameStyleId + '_' + index);
++                    }
++                }
++
+                 var basedonStyle = nodes[node].getElementsByTagName('w:basedOn')[0];
+                 if (basedonStyle) {
+                     var basedonStyleId = basedonStyle.getAttribute('w:val');
+@@ -68,7 +76,9 @@ var updateStyleRel_Content = function (zip, fileIndex, styleId) {
      var xmlString = zip.file("word/document.xml").asText();
      var xml = new DOMParser().parseFromString(xmlString, 'text/xml');
  
 -    xmlString = xmlString.replace(new RegExp('w:val="' + styleId + '"', 'g'), 'w:val="' + styleId + '_' + fileIndex + '"');
 +    // xmlString = xmlString.replace(new RegExp('w:val="' + styleId + '"', 'g'), 'w:val="' + styleId + '_' + fileIndex + '"');
 +    // 此处仅针对非numId属性重命名，numId在处理numbering.xml时单独处理
-+    xmlString = xmlString.replace(new RegExp('(?<!w:numId )w:val="' + styleId + '"', 'g'), 'w:val="' + styleId + '_' + fileIndex + '"');
++    xmlString = xmlString.replace(new RegExp('(?<!w:numId )w:val="' + styleId + '"', 'g'), styleId.includes('Heading') ? ('w:val="' + styleId + '"') : ('w:val="' + styleId + '_' + fileIndex + '"'));
  
      // zip.file("word/document.xml", "");
  
