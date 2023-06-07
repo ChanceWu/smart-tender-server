@@ -1,6 +1,5 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { CreateDocxMergeDto } from './dto/create-docx-merge.dto';
-import { UpdateDocxMergeDto } from './dto/update-docx-merge.dto';
 import {
   formatTreeData,
   getDefaultHeaderStyle,
@@ -18,17 +17,13 @@ import {
   Packer,
   PageNumber,
   Paragraph,
-  TableOfContents,
-  TabStopPosition,
-  TabStopType,
   TextRun,
 } from 'docx';
 import { writeFile, readFileSync } from 'fs';
 import { resolve } from 'path';
 import * as FormData from 'form-data';
 import axios from 'axios';
-import { Readable } from 'stream';
-import fetch from 'node-fetch';
+import { DefaultHeaderStyle } from 'src/utils/docxData';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const DocxMerger = require('docx-merger');
 
@@ -41,13 +36,6 @@ const HeaderArr = [
   'Heading5',
   'Heading6',
 ];
-const DefaultStyle = {
-  level: 'Heading1',
-  fontFamily: '黑体',
-  fontSize: 42,
-  lineHeight: 240,
-  alignment: 'left',
-};
 
 @Injectable()
 export class DocxMergeService {
@@ -94,11 +82,9 @@ export class DocxMergeService {
     return `This action returns all docxMerge ${process.env.BACKEND_SERVER}`;
   }
 
-  async createTableOfContents(tenderPreStyle: API.TenderPreStyle) {
+  async createDefaultPage(tenderPreStyle: API.TenderPreStyle) {
     const { margin = {}, header = [] } = tenderPreStyle ?? {};
     const headerStyle = getHeaderStyleFromList(header);
-    // const HeaderLevel = HeaderArr[level ?? 0];
-    // const style = headerStyle['Heading1'] || DefaultStyle;
     try {
       const doc = new Document({
         features: {
@@ -171,7 +157,7 @@ export class DocxMergeService {
       return Packer.toBuffer(doc);
     } catch (err) {
       this.logger.error(`createPage get err: ${err.message}`, err.stack);
-      throw new Error(err);
+      throw err;
     }
   }
 
@@ -179,7 +165,7 @@ export class DocxMergeService {
     const headerStyle = getHeaderStyleFromList(tenderPreStyle.header);
     console.log(JSON.stringify(headerStyle));
     const HeaderLevel = HeaderArr[level ?? 0];
-    const style = headerStyle[HeaderLevel] || DefaultStyle;
+    const style = headerStyle[HeaderLevel] || DefaultHeaderStyle[HeaderLevel];
     try {
       const doc = new Document({
         // styles: {
@@ -200,11 +186,11 @@ export class DocxMergeService {
               new Paragraph({
                 text: text,
                 heading: (style.level ??
-                  HeadingLevel.HEADING_1) as HeadingLevel,
+                  HeadingLevel.HEADING_6) as HeadingLevel,
                 alignment: (style.alignment ??
-                  AlignmentType.RIGHT) as AlignmentType,
+                  AlignmentType.LEFT) as AlignmentType,
                 spacing: {
-                  line: style.lineHeight ?? 720,
+                  line: style.lineHeight ?? 240,
                 },
               }),
             ],
@@ -214,12 +200,12 @@ export class DocxMergeService {
       return Packer.toBuffer(doc);
     } catch (err) {
       this.logger.error(`createPage get err: ${err.message}`, err.stack);
-      throw new Error(err);
+      throw err;
     }
   }
 
   async createImagePage(url) {
-    const buf = await this.fetchNewFile(url);
+    const buf = await this.requestFileBuffer(url);
     console.log('image ', buf);
     try {
       const doc = new Document({
@@ -245,11 +231,11 @@ export class DocxMergeService {
       return Packer.toBuffer(doc);
     } catch (err) {
       this.logger.error(`createImagePage get err: ${err.message}`, err.stack);
-      throw new Error(err);
+      throw err;
     }
   }
 
-  async fetchNewFile(key: string) {
+  async requestFileBuffer(key: string) {
     try {
       const response = await axios({
         url: `${process.env.BACKEND_SERVER}/inter-api/tender/file/download/${key}`,
@@ -262,11 +248,11 @@ export class DocxMergeService {
       return Buffer.from(response.data, 'binary');
     } catch (err) {
       this.logger.error(`axios ${key} get err: ${err.message}`, err.stack);
-      throw new Error(err);
+      throw err;
     }
   }
 
-  async getSourceByData(data: API.TenderTocTreeNode[], tenderPreStyle: API.TenderPreStyle) {
+  async getSourceByData(data: API.TenderTocTreeNode[], tenderPreStyle: API.TenderPreStyle = {}) {
     const reqList = data.map((v) => {
       if (v.sourceFlag && v.tenderSourceDto) {
         if (
@@ -276,17 +262,17 @@ export class DocxMergeService {
         ) {
           return this.createImagePage(v.tenderSourceDto.fileDtoList[0].key);
         } else {
-          return this.fetchNewFile(v.tenderSourceDto.fileDtoList[0].key);
+          return this.requestFileBuffer(v.tenderSourceDto.fileDtoList[0].key);
         }
       } else {
         return this.createPage(v.tocName, v.level, tenderPreStyle);
       }
     });
     try {
-      return Promise.all([this.createTableOfContents(tenderPreStyle), ...reqList]);
+      return Promise.all([this.createDefaultPage(tenderPreStyle), ...reqList]);
     } catch (err) {
       this.logger.error(`getSourceByData get err: ${err.message}`, err.stack);
-      throw new Error(err);
+      throw err;
     }
   }
 
@@ -308,7 +294,7 @@ export class DocxMergeService {
       });
     } catch (err) {
       this.logger.error(`mergerDocx get err: ${err.message}`, err.stack);
-      throw new Error(err);
+      throw err;
     }
   }
 
@@ -330,11 +316,11 @@ export class DocxMergeService {
         return data.data.key;
       } else {
         this.logger.error(`uploadDocx get err: ${data.msg || '上传标书出错'}`);
-        throw new Error(data.msg || '上传标书出错');
+        throw (data.msg || '上传标书出错');
       }
     } catch (err) {
       this.logger.error(`uploadDocx get err: ${err.message}`, err.stack);
-      throw new Error(err);
+      throw err;
     }
   }
 
@@ -351,7 +337,7 @@ export class DocxMergeService {
       });
     } catch (err) {
       this.logger.error(`createCallBack get err: ${err.message}`, err.stack);
-      throw new Error(err);
+      throw err;
     }
   }
 }

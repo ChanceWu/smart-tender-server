@@ -1,4 +1,5 @@
 import { AlignmentType, IBaseParagraphStyleOptions } from "docx";
+import { DefaultHeaderStyle } from "./docxData";
 
 export const getListFromTree = (
   nodes: API.TenderTocTreeNode[],
@@ -58,7 +59,7 @@ export const formatTreeData = (
 };
 
 export const getHeaderStyleFromList = (styles?: API.HeaderStyle[]) => {
-  const obj: Record<string, API.HeaderStyle> = {};
+  const obj: Record<string, API.HeaderStyle> = { ...DefaultHeaderStyle };
   (styles ?? []).forEach((v) => {
     obj[v.level] = v;
   });
