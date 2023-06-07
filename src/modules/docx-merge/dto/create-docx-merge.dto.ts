@@ -4,5 +4,5 @@ export class CreateDocxMergeDto {
   tenderToc: API.TenderTocType[];
   tenderCreateSourceDtoMap: Record<string, API.TenderSourceDto>;
   loginUser: API.LoginUser;
-  preStyle?: API.PreStyle;
+  tenderPreStyle?: API.TenderPreStyle;
 }

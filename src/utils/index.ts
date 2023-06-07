@@ -43,6 +43,9 @@ export const getListFromTree = (
   return list;
 };
 
+/**
+ * 格式化处理树结构，后端返回树结构较特殊
+ */
 export const formatTreeData = (
   data: API.TenderTocType[],
 ): API.TenderTocTreeNode[] => {

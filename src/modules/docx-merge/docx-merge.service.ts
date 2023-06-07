@@ -75,16 +75,16 @@ export class DocxMergeService {
       console.log(JSON.stringify(treeData));
       const list = getListFromTree(treeData, data.tenderCreateSourceDtoMap, 1);
       console.log(JSON.stringify(list));
-      const source = await this.getSourceByData(list, data.preStyle);
+      const source = await this.getSourceByData(list, data.tenderPreStyle);
       const blobData = await this.mergerDocx(source);
-      // const tenderKey = await this.uploadDocx(blobData, data.name);
-      // this.createCallBack({
-      //   fileKey: tenderKey,
-      //   id: data.id,
-      //   status: 'SUCCESS',
-      // });
+      const tenderKey = await this.uploadDocx(blobData, data.name);
+      this.createCallBack({
+        fileKey: tenderKey,
+        id: data.id,
+        status: 'SUCCESS',
+      });
     } catch (err) {
-      // this.createCallBack({ id: data.id, status: 'FAIL' });
+      this.createCallBack({ id: data.id, status: 'FAIL' });
       this.logger.error(`create tender get err: ${err.message}`, err.stack);
       throw new Error(err);
     }
@@ -94,8 +94,8 @@ export class DocxMergeService {
     return `This action returns all docxMerge ${process.env.BACKEND_SERVER}`;
   }
 
-  async createTableOfContents(preStyle: API.PreStyle) {
-    const { margin = {}, header = [] } = preStyle ?? {};
+  async createTableOfContents(tenderPreStyle: API.TenderPreStyle) {
+    const { margin = {}, header = [] } = tenderPreStyle ?? {};
     const headerStyle = getHeaderStyleFromList(header);
     // const HeaderLevel = HeaderArr[level ?? 0];
     // const style = headerStyle['Heading1'] || DefaultStyle;
@@ -175,8 +175,8 @@ export class DocxMergeService {
     }
   }
 
-  async createPage(text: string, level: number, preStyle: API.PreStyle) {
-    const headerStyle = getHeaderStyleFromList(preStyle.header);
+  async createPage(text: string, level: number, tenderPreStyle: API.TenderPreStyle) {
+    const headerStyle = getHeaderStyleFromList(tenderPreStyle.header);
     console.log(JSON.stringify(headerStyle));
     const HeaderLevel = HeaderArr[level ?? 0];
     const style = headerStyle[HeaderLevel] || DefaultStyle;
@@ -266,7 +266,7 @@ export class DocxMergeService {
     }
   }
 
-  async getSourceByData(data: API.TenderTocTreeNode[], preStyle: API.PreStyle) {
+  async getSourceByData(data: API.TenderTocTreeNode[], tenderPreStyle: API.TenderPreStyle) {
     const reqList = data.map((v) => {
       if (v.sourceFlag && v.tenderSourceDto) {
         if (
@@ -279,11 +279,11 @@ export class DocxMergeService {
           return this.fetchNewFile(v.tenderSourceDto.fileDtoList[0].key);
         }
       } else {
-        return this.createPage(v.tocName, v.level, preStyle);
+        return this.createPage(v.tocName, v.level, tenderPreStyle);
       }
     });
     try {
-      return Promise.all([this.createTableOfContents(preStyle), ...reqList]);
+      return Promise.all([this.createTableOfContents(tenderPreStyle), ...reqList]);
     } catch (err) {
       this.logger.error(`getSourceByData get err: ${err.message}`, err.stack);
       throw new Error(err);
@@ -294,18 +294,18 @@ export class DocxMergeService {
     try {
       const docx = new DocxMerger({ pageBreak: false }, bufList);
 
-      // return new Promise<Buffer>((resolve, reject) => {
+      return new Promise<Buffer>((resolve, reject) => {
         docx.save('nodebuffer', (data) => {
           console.log(writeFile, data, Buffer.isBuffer(data));
-          // return resolve(data);
+          return resolve(data);
 
           // fs.writeFile("output.zip", data, function(err){/*...*/});
-          writeFile(resolve(__dirname, 'output.docx'), data, function (err) {
-            /*...*/
-            if (err) throw new Error(JSON.stringify(err));
-          });
+          // writeFile(resolve(__dirname, 'output.docx'), data, function (err) {
+          //   /*...*/
+          //   if (err) throw new Error(JSON.stringify(err));
+          // });
         });
-      // });
+      });
     } catch (err) {
       this.logger.error(`mergerDocx get err: ${err.message}`, err.stack);
       throw new Error(err);

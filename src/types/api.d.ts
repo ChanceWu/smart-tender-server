@@ -118,7 +118,7 @@ declare namespace API {
     status: string;
   }
 
-  interface PreStyle {
+  interface TenderPreStyle {
     margin?: MarginStyle;
     header?: HeaderStyle[];
   }
