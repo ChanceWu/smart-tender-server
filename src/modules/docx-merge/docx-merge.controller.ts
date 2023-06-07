@@ -9,7 +9,6 @@ export class DocxMergeController {
     @Post()
     @HttpCode(200)
     create(@Body() data: CreateDocxMergeDto) {
-        console.log('create tender data -> ', JSON.stringify(data));
         return this.docxMergeService.create(data);
     }
 

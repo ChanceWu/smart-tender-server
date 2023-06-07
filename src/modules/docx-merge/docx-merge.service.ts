@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { CreateDocxMergeDto } from './dto/create-docx-merge.dto';
 import {
   formatTreeData,
@@ -24,6 +24,7 @@ import { resolve } from 'path';
 import * as FormData from 'form-data';
 import axios from 'axios';
 import { DefaultHeaderStyle } from 'src/utils/docxData';
+import { wsLogger } from 'src/utils/wsLogger';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const DocxMerger = require('docx-merger');
 
@@ -39,10 +40,9 @@ const HeaderArr = [
 
 @Injectable()
 export class DocxMergeService {
-  private readonly logger = new Logger('DocxMergeService');
-
   private loginUser: API.LoginUser;
   create(data: CreateDocxMergeDto) {
+    wsLogger.info(`/tender-node/docx-merger data--> ${JSON.stringify(data)}`);
     this.handleCreateTender(data);
     return { msg: '标书生成中' };
   }
@@ -73,7 +73,7 @@ export class DocxMergeService {
       });
     } catch (err) {
       this.createCallBack({ id: data.id, status: 'FAIL' });
-      this.logger.error(`create tender get err: ${err.message}`, err.stack);
+      wsLogger.error(`create tender get err: ${err.message}`, err);
       throw new Error(err);
     }
   }
@@ -156,7 +156,7 @@ export class DocxMergeService {
       });
       return Packer.toBuffer(doc);
     } catch (err) {
-      this.logger.error(`createPage get err: ${err.message}`, err.stack);
+      wsLogger.error(`createDefaultPage get err: ${err.message}`, err);
       throw err;
     }
   }
@@ -199,7 +199,7 @@ export class DocxMergeService {
       });
       return Packer.toBuffer(doc);
     } catch (err) {
-      this.logger.error(`createPage get err: ${err.message}`, err.stack);
+      wsLogger.error(`createPage get err: ${err.message}`, err);
       throw err;
     }
   }
@@ -230,7 +230,7 @@ export class DocxMergeService {
       });
       return Packer.toBuffer(doc);
     } catch (err) {
-      this.logger.error(`createImagePage get err: ${err.message}`, err.stack);
+      wsLogger.error(`createImagePage get err: ${err.message}`, err);
       throw err;
     }
   }
@@ -247,7 +247,7 @@ export class DocxMergeService {
       });
       return Buffer.from(response.data, 'binary');
     } catch (err) {
-      this.logger.error(`axios ${key} get err: ${err.message}`, err.stack);
+      wsLogger.error(`axios ${key} get err: ${err.message}`, err);
       throw err;
     }
   }
@@ -271,7 +271,7 @@ export class DocxMergeService {
     try {
       return Promise.all([this.createDefaultPage(tenderPreStyle), ...reqList]);
     } catch (err) {
-      this.logger.error(`getSourceByData get err: ${err.message}`, err.stack);
+      wsLogger.error(`getSourceByData get err: ${err.message}`, err);
       throw err;
     }
   }
@@ -293,7 +293,7 @@ export class DocxMergeService {
         });
       });
     } catch (err) {
-      this.logger.error(`mergerDocx get err: ${err.message}`, err.stack);
+      wsLogger.error(`mergerDocx get err: ${err.message}`, err);
       throw err;
     }
   }
@@ -315,17 +315,17 @@ export class DocxMergeService {
       if (data.code === 1) {
         return data.data.key;
       } else {
-        this.logger.error(`uploadDocx get err: ${data.msg || '上传标书出错'}`);
-        throw (data.msg || '上传标书出错');
+        wsLogger.error(`uploadDocx msg get err: ${data.msg || '上传标书出错'}`);
+        throw Error(data.msg || '上传标书出错');
       }
     } catch (err) {
-      this.logger.error(`uploadDocx get err: ${err.message}`, err.stack);
+      wsLogger.error(`uploadDocx get err: ${err.message}`, err);
       throw err;
     }
   }
 
   async createCallBack(data: API.CreateCallback) {
-    this.logger.warn(`createCallBack data: `, data);
+    wsLogger.info(`createCallBack data: ${JSON.stringify(data)}`);
     try {
       await axios<API.UploadResult>({
         url: `${process.env.BACKEND_SERVER}/inter-api/tender/tender/create/notice`,
@@ -336,7 +336,7 @@ export class DocxMergeService {
         },
       });
     } catch (err) {
-      this.logger.error(`createCallBack get err: ${err.message}`, err.stack);
+      wsLogger.error(`createCallBack get err: ${err.message}`, err);
       throw err;
     }
   }
